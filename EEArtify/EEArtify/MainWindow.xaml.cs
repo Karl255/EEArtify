@@ -27,7 +27,6 @@ namespace EEArtify {
 		public MainWindow() {
 			InitializeComponent();
 			Algorithm_ComboBox.ItemsSource = algs;
-
 		}
 
 		private void AllBlocksImage_Button_Click(object sender, RoutedEventArgs e) {
@@ -64,14 +63,14 @@ namespace EEArtify {
 		}
 
 		private void Start_Button_Click(object sender, RoutedEventArgs e) {
-			if (allBlocksImage != "" && inputImage != "" && outputImage != "") {
-				Converter.Start(allBlocksImage, inputImage, outputImage, algs[Algorithm_ComboBox.SelectedIndex].Algorithm, ProgressUpdate);
+			if (allBlocksImage != "" && inputImage != "" && outputImage != "" && Algorithm_ComboBox.SelectedIndex != -1) {
+				Converter.Start(allBlocksImage, inputImage, outputImage, algs[Algorithm_ComboBox.SelectedIndex].Algorithm, ProgressBarUpdate);
 			} else {
-				MessageBox.Show("Not all images are selected", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+				MessageBox.Show("Please select all images and the algorithm!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
 		}
 
-		private void ProgressUpdate(double value, string text) {
+		private void ProgressBarUpdate(double value, string text) {
 			ConversionProgress_ProgressBar.Value = value;
 			ConversionProgress_TextBox.Text = text;
 		}
