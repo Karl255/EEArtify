@@ -2,6 +2,8 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace EEArtify {
@@ -11,7 +13,7 @@ namespace EEArtify {
 	public partial class MainWindow : Window {
 
 		//Objects for the dropdown menu to select the algorithm. The selected algorithms delegate will then be passed to the 
-		List<ComboBoxElement> algs = new List<ComboBoxElement> {
+		private List<ComboBoxElement> algs = new List<ComboBoxElement> {
 			new ComboBoxElement(new Cie1976Comparison().Compare, "deltaE76"),
 			new ComboBoxElement(new Cie94Comparison().Compare, "deltaE94"),
 			new ComboBoxElement(new CmcComparison().Compare, "CMCcl"),
@@ -19,14 +21,15 @@ namespace EEArtify {
 		};
 
 		private string allBlocksImage = "";
-		private string inputImage = "";
-		private string outputImage = "";
+		private string inputImagePath = "";
+		private string outputImagePath = "";
 
-		private int progressTotal;
+		private Converter converter = new Converter();
 
 		public MainWindow() {
 			InitializeComponent();
 			Algorithm_ComboBox.ItemsSource = algs;
+			Algorithm_ComboBox.SelectedIndex = 0;
 		}
 
 		private void AllBlocksImage_Button_Click(object sender, RoutedEventArgs e) {
@@ -46,7 +49,7 @@ namespace EEArtify {
 				InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
 			};
 			if (ofd.ShowDialog() == true) {
-				inputImage = ofd.FileName;
+				inputImagePath = ofd.FileName;
 				InputImage_TextBox.Text = ofd.FileName;
 			}
 		}
@@ -57,22 +60,40 @@ namespace EEArtify {
 				InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
 			};
 			if (sfd.ShowDialog() == true) {
-				outputImage = sfd.FileName;
+				outputImagePath = sfd.FileName;
 				OutputImage_TextBox.Text = sfd.FileName;
 			}
 		}
 
-		private void Start_Button_Click(object sender, RoutedEventArgs e) {
-			if (allBlocksImage != "" && inputImage != "" && outputImage != "" && Algorithm_ComboBox.SelectedIndex != -1) {
-				Converter.Start(allBlocksImage, inputImage, outputImage, algs[Algorithm_ComboBox.SelectedIndex].Algorithm, ProgressBarUpdate);
-			} else {
-				MessageBox.Show("Please select all images and the algorithm!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+		private async void Start_Button_Click(object sender, RoutedEventArgs e) {
+			if (allBlocksImage == "" || inputImagePath == "" || outputImagePath == "") {
+				MessageBox.Show("Please select all image paths!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
+
+			Bitmap image;
+			try {
+				image = new Bitmap(inputImagePath);
+			} catch {
+				MessageBox.Show("Input image not found!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+				return;
+			}
+
+			var allowedColors = new List<Color>();
+
+			for(int y = 0; y < image.Height; y++) {
+				for(int x = 0; x < image.Width; x++) {
+					allowedColors.Add(image.GetPixel(x, y));
+				}
+			}
+
+			image = converter.Start(allowedColors, image, algs[Algorithm_ComboBox.SelectedIndex].Algorithm, UpdateProgressBar);
+			image.Save(outputImagePath);
+			MessageBox.Show("Conversion finished!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
 		}
 
-		private void ProgressBarUpdate(double value, string text) {
-			ConversionProgress_ProgressBar.Value = value;
-			ConversionProgress_TextBox.Text = text;
+		private void UpdateProgressBar() {
+			ConversionProgress_ProgressBar.Value = converter.Progress / converter.TotalWork;
+			ConversionProgress_TextBox.Text = $"{ (converter.Progress != converter.TotalWork ? "Working..." : "Done!") } { converter.Progress }/{ converter.TotalWork }";
 		}
 	}
 }

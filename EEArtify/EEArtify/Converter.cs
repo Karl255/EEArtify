@@ -5,60 +5,40 @@ using System.Windows;
 
 namespace EEArtify {
 
-	public delegate void progressUpdater(double value, string text);
+	public delegate void ProgressBarUpdater();
 
-	public static class Converter {
+	public class Converter {
 
-		private static Bitmap allBlocksImage;
-		private static Bitmap inputImage;
-		private static Bitmap outputImage;
-
-		private static List<Color> allowedColors = new List<Color> {
-			Color.FromArgb(0, 0, 0)
-		};
-
-		public static void Start(string allBlocksImagePath, string inpuImagetPath, string outputImagePath, ComparisonAlgorithm Compare, progressUpdater updateProgressBar) {
-
-			//opens the AllBlocks image
-			try {
-				allBlocksImage = new Bitmap(allBlocksImagePath);
-			} catch {
-				MessageBox.Show("Could not open the AllBlocks image!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-				return;
+		public int TotalWork { get; private set; } = -1;
+		
+		private int _progress = -1;
+		public int Progress {
+			get { return _progress; }
+			private set {
+				_progress = value;
+				UpdateProgressBar();
 			}
+		}
+		
+		public ProgressBarUpdater UpdateProgressBar = () => {};
 
-			//opens the input image
-			try {
-				inputImage = new Bitmap(inpuImagetPath);
-			} catch {
-				MessageBox.Show("Could not open the input image!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-				return;
-			}
-
-			int totalPixels = inputImage.Height * inputImage.Width;
-
-			//takes all colors from the AllBlocks image and puts it in a list
-			for (int y = 0; y < inputImage.Height; y++) {
-				for (int x = 0; x < inputImage.Width; x++) {
-					Color c = inputImage.GetPixel(x, y);
-					if (!c.Equals(Color.FromArgb(0, 0, 0))) {
-						allowedColors.Add(c);
-					}
-				}
-			}
-
-			//for each pixel, finds the most similar color using the specified Compare method
-			for (int y = 0; y < inputImage.Height; y++) {
-				for (int x = 0; x < inputImage.Width; x++) {
+		public Bitmap Start(List<Color> allowedColors, Bitmap image, ComparisonAlgorithm Compare, ProgressBarUpdater updater) {
+			
+			UpdateProgressBar = updater;
+			TotalWork = image.Height * image.Width;
+			
+			//for each pixel at (x, y), finds the most similar color in the allowedColor List using the specified Compare method
+			for (int y = 0; y < image.Height; y++) {
+				for (int x = 0; x < image.Width; x++) {
 
 					double minDeltaE = double.MaxValue;
-					var bestColor = Color.FromArgb(0, 0, 0);
+					var bestColor = Color.FromArgb(0, 0, 0); //defaults to black
 
-					for (int i = 1; i < allowedColors.Count; i++) {
+					for (int i = 0; i < allowedColors.Count; i++) {
 						var c1 = new Rgb() {
-							R = inputImage.GetPixel(x, y).R,
-							G = inputImage.GetPixel(x, y).G,
-							B = inputImage.GetPixel(x, y).B
+							R = image.GetPixel(x, y).R,
+							G = image.GetPixel(x, y).G,
+							B = image.GetPixel(x, y).B
 						};
 
 						var c2 = new Rgb() {
@@ -75,25 +55,12 @@ namespace EEArtify {
 						}
 					}
 
-					inputImage.SetPixel(x, y, bestColor);
-
-					int currentPixel = y * inputImage.Height + x;
-					if (currentPixel != totalPixels) {
-						updateProgressBar(currentPixel / totalPixels, $"Processing... { currentPixel }/{ totalPixels }");
-					} else {
-						updateProgressBar(1, $"Done! { totalPixels }/{ totalPixels }");
-					}
+					image.SetPixel(x, y, bestColor);
+					Progress++;
 				}
 			}
-
-			try {
-				inputImage.Save(outputImagePath);
-			} catch {
-				MessageBox.Show("An error occured while trying to save the file!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-				return;
-			}
-
-			MessageBox.Show("Conversion finished!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+			
+			return image;
 		}
 	}
 }
