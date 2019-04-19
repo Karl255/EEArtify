@@ -3,11 +3,11 @@
 namespace EEArtify {
 	public class ComboBoxElement {
 
-		public ComparisonAlgorithm Algorithm;
+		public ComparisonAlgorithms Algorithm;
 
 		public string DisplayName { get; set; }
 
-		public ComboBoxElement(ComparisonAlgorithm alg, string displayName) {
+		public ComboBoxElement(ComparisonAlgorithms alg, string displayName) {
 			Algorithm = alg;
 			DisplayName = displayName;
 		}

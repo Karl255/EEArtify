@@ -14,17 +14,15 @@ namespace EEArtify {
 
 		//Objects for the dropdown menu to select the algorithm. The selected algorithms delegate will then be passed to the 
 		private List<ComboBoxElement> algs = new List<ComboBoxElement> {
-			new ComboBoxElement(new Cie1976Comparison().Compare, "deltaE76"),
-			new ComboBoxElement(new Cie94Comparison().Compare, "deltaE94"),
-			new ComboBoxElement(new CmcComparison().Compare, "CMCcl"),
-			new ComboBoxElement(new CieDe2000Comparison().Compare, "deltaE2000")
+			new ComboBoxElement(ComparisonAlgorithms.DeltaE76, "deltaE76"),
+			new ComboBoxElement(ComparisonAlgorithms.DeltaE94, "deltaE94"),
+			new ComboBoxElement(ComparisonAlgorithms.CMCcl, "CMCcl"),
+			new ComboBoxElement(ComparisonAlgorithms.DeltaE2000, "deltaE2000")
 		};
 
 		private string allBlocksImage = "";
 		private string inputImagePath = "";
 		private string outputImagePath = "";
-
-		private Converter converter = new Converter();
 
 		public MainWindow() {
 			InitializeComponent();
@@ -85,15 +83,21 @@ namespace EEArtify {
 					allowedColors.Add(image.GetPixel(x, y));
 				}
 			}
+			
+			var converter = new Converter();
+			
+			//converter.AddUpdater(ConversionProgress_ProgressBar.Dispatcher, UpdateProgressBar);
+			await converter.Start(allowedColors, image, algs[Algorithm_ComboBox.SelectedIndex].Algorithm);
+			converter.Image.Save(outputImagePath);
 
-			image = converter.Start(allowedColors, image, algs[Algorithm_ComboBox.SelectedIndex].Algorithm, UpdateProgressBar);
-			image.Save(outputImagePath);
 			MessageBox.Show("Conversion finished!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
 		}
 
+		/*
 		private void UpdateProgressBar() {
 			ConversionProgress_ProgressBar.Value = converter.Progress / converter.TotalWork;
 			ConversionProgress_TextBox.Text = $"{ (converter.Progress != converter.TotalWork ? "Working..." : "Done!") } { converter.Progress }/{ converter.TotalWork }";
 		}
+		*/
 	}
 }
