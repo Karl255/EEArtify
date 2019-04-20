@@ -87,6 +87,7 @@ namespace EEArtify {
 
 			var allowedColors = new LinkedList<Color>();
 
+			//puts all colors from the AllBlocks filter into a LinkedList
 			for (int y = 0; y < allBlocksImage.Height; y++) {
 				for (int x = 0; x < allBlocksImage.Width; x++) {
 					var color = allBlocksImage.GetPixel(x, y);
