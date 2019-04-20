@@ -109,7 +109,6 @@
 				Margin="1"
 				Click="Start_Button_Click" />
 
-		<!--
 		<ProgressBar x:Name="ConversionProgress_ProgressBar"
 					 Grid.Column="1"
 					 Grid.ColumnSpan="3"
@@ -124,8 +123,7 @@
 				   Grid.ColumnSpan="3"
 				   Grid.Row="5"
 				   Margin="1"
-				   Text="Waiting"
+				   Text="Waiting..."
 				   TextAlignment="Center" />
-		-->
 	</Grid>
 </Window>

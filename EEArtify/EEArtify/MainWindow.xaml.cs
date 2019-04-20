@@ -1,9 +1,8 @@
-﻿using ColorMine.ColorSpaces.Comparisons;
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace EEArtify {
@@ -12,6 +11,12 @@ namespace EEArtify {
 	/// </summary>
 	public partial class MainWindow : Window {
 
+		private string allBlocksImagePath = "";
+		private string inputImagePath = "";
+		private string outputImagePath = "";
+
+		Converter converter = new Converter();
+
 		//Objects for the dropdown menu to select the algorithm. The selected algorithms delegate will then be passed to the 
 		private List<ComboBoxElement> algs = new List<ComboBoxElement> {
 			new ComboBoxElement(ComparisonAlgorithms.DeltaE76, "deltaE76"),
@@ -19,10 +24,6 @@ namespace EEArtify {
 			new ComboBoxElement(ComparisonAlgorithms.CMCcl, "CMCcl"),
 			new ComboBoxElement(ComparisonAlgorithms.DeltaE2000, "deltaE2000")
 		};
-
-		private string allBlocksImage = "";
-		private string inputImagePath = "";
-		private string outputImagePath = "";
 
 		public MainWindow() {
 			InitializeComponent();
@@ -36,7 +37,7 @@ namespace EEArtify {
 				InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
 			};
 			if (ofd.ShowDialog() == true) {
-				allBlocksImage = ofd.FileName;
+				allBlocksImagePath = ofd.FileName;
 				AllBlocksImage_TextBox.Text = ofd.FileName;
 			}
 		}
@@ -64,7 +65,7 @@ namespace EEArtify {
 		}
 
 		private async void Start_Button_Click(object sender, RoutedEventArgs e) {
-			if (allBlocksImage == "" || inputImagePath == "" || outputImagePath == "") {
+			if (allBlocksImagePath == "" || inputImagePath == "" || outputImagePath == "") {
 				MessageBox.Show("Please select all image paths!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
 
@@ -76,28 +77,40 @@ namespace EEArtify {
 				return;
 			}
 
-			var allowedColors = new List<Color>();
+			Bitmap allBlocksImage;
+			try {
+				allBlocksImage = new Bitmap(allBlocksImagePath);
+			} catch {
+				MessageBox.Show("Input image not found!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+				return;
+			}
 
-			for(int y = 0; y < image.Height; y++) {
-				for(int x = 0; x < image.Width; x++) {
-					allowedColors.Add(image.GetPixel(x, y));
+			var allowedColors = new LinkedList<Color>();
+
+			for (int y = 0; y < allBlocksImage.Height; y++) {
+				for (int x = 0; x < allBlocksImage.Width; x++) {
+					var color = allBlocksImage.GetPixel(x, y);
+					if (!allowedColors.Contains(color))
+						allowedColors.AddLast(color);
 				}
 			}
+
+			converter.AddUpdater(ConversionProgress_ProgressBar.Dispatcher, UpdateProgressBar);
 			
-			var converter = new Converter();
-			
-			//converter.AddUpdater(ConversionProgress_ProgressBar.Dispatcher, UpdateProgressBar);
-			await converter.Start(allowedColors, image, algs[Algorithm_ComboBox.SelectedIndex].Algorithm);
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			await converter.StartAsync(allowedColors, image, algs[Algorithm_ComboBox.SelectedIndex].Algorithm);
+			stopwatch.Stop();
+
 			converter.Image.Save(outputImagePath);
-
-			MessageBox.Show("Conversion finished!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+			ConversionProgress_ProgressBar.Value = 1.0;
+			ConversionProgress_TextBox.Text = $"Done! ({ stopwatch.ElapsedMilliseconds } ms)";
+			MessageBox.Show($"Conversion finished! Took { stopwatch.ElapsedMilliseconds } ms", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
 		}
-
-		/*
-		private void UpdateProgressBar() {
-			ConversionProgress_ProgressBar.Value = converter.Progress / converter.TotalWork;
-			ConversionProgress_TextBox.Text = $"{ (converter.Progress != converter.TotalWork ? "Working..." : "Done!") } { converter.Progress }/{ converter.TotalWork }";
+		
+		private void UpdateProgressBar(int progress) {
+			ConversionProgress_ProgressBar.Value = (double) progress / converter.TotalWork;
+			ConversionProgress_TextBox.Text = $"Working... { progress }/{ converter.TotalWork }";
 		}
-		*/
 	}
 }

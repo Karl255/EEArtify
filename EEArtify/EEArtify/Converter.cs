@@ -9,34 +9,31 @@ using System.Threading.Tasks;
 
 namespace EEArtify {
 
-	//public delegate void ProgressBarUpdater();
+	public delegate void ProgressBarUpdaterDelegate(int progress);
 
 	public class Converter {
 
-		/*
+		private LinkedList<Color> _allowedColors;
+		public Bitmap Image { get; private set; } = new Bitmap(1, 1);
 		public int TotalWork { get; private set; } = -1;
 		
+		//each time progress is made, update the progress bar
 		private int _progress = -1;
 		public int Progress {
-			get { return _progress; }
+			get => _progress;
 			private set {
-				_progress = value;
-				Dispatcher.Invoke(() => UpdateProgressBar());
+				if (hasUpdater) {
+					_progress = value;
+					Dispatcher.Invoke(() => UpdateProgressBar(_progress));
+				}
 			}
 		}
 
-		public ProgressBarUpdater UpdateProgressBar = () => {};
+		private ComparisonAlgorithm Compare;
+
+		private ProgressBarUpdaterDelegate UpdateProgressBar;
 		public Dispatcher Dispatcher;
-		*/
-
-		private List<Color> AllowedColors;
-		
-		public Bitmap Image {
-			get;
-			private set;
-		} = new Bitmap(1, 1);
-
-		private ComparisonAlgorithms Comparator;
+		private bool hasUpdater = false;
 
 		private Dictionary<ComparisonAlgorithms, ComparisonAlgorithm> algs = new Dictionary<ComparisonAlgorithms, ComparisonAlgorithm> {
 			{ ComparisonAlgorithms.DeltaE76, new Cie1976Comparison().Compare },
@@ -45,59 +42,81 @@ namespace EEArtify {
 			{ ComparisonAlgorithms.DeltaE2000, new CieDe2000Comparison().Compare }
 		};
 
-		public async Task Start(List<Color> allowedColors, Bitmap image, ComparisonAlgorithms comparator) {
-			AllowedColors = allowedColors;
+		public async Task StartAsync(LinkedList<Color> allowedColors, Bitmap image, ComparisonAlgorithms comparator) {
+			_allowedColors = allowedColors;
 			Image = image;
-			Comparator = comparator;
-			await Task.Run(() => StartAsync());
+			Compare = algs[comparator];
+			
+			await Task.Run(() => Start());
 		}
 
-		private void StartAsync() {
-			ComparisonAlgorithm Compare = algs[Comparator];
-
-			//TotalWork = image.Height * image.Width;
+		private void Start() {
 			
-			//for each pixel at (x, y), finds the most similar color in the allowedColor List using the specified Compare method
+			var imageColors = new LinkedList<Color>();
+			
+			TotalWork = Image.Height * Image.Width;
+			Progress = 0;
+
+			//puts all colors of an image into a LinkedList
 			for (int y = 0; y < Image.Height; y++) {
-				for (int x = 0; x < Image.Width; x++) {
-
-					double minDeltaE = double.MaxValue;
-					var bestColor = Color.FromArgb(0, 0, 0); //defaults to black
-
-					for (int i = 0; i < AllowedColors.Count; i++) {
-						var c1 = new Rgb() {
-							R = Image.GetPixel(x, y).R,
-							G = Image.GetPixel(x, y).G,
-							B = Image.GetPixel(x, y).B
-						};
-
-						var c2 = new Rgb() {
-							R = AllowedColors[i].R,
-							G = AllowedColors[i].G,
-							B = AllowedColors[i].B
-						};
-
-						double deltaE = Compare(c1, c2);
-
-						if (deltaE < minDeltaE) {
-							minDeltaE = deltaE;
-							bestColor = AllowedColors[i];
-						}
-					}
-
-					Image.SetPixel(x, y, bestColor);
-					//Progress++;
+				for(int x = 0; x < Image.Width; x++) {
+					var c = Image.GetPixel(x, y);
+					if (!imageColors.Contains(c))
+						imageColors.AddLast(c);
+					Progress++;
 				}
 			}
-			
-		}
 
-		/*
-		public void AddUpdater(Dispatcher dis, ProgressBarUpdater del) {
+			var mappedColors = new Dictionary<Color, Color>();
+
+			TotalWork = _allowedColors.Count;
+			Progress = 0;
+
+			//finds the closest color for each color in the imageColors LinkedList
+			foreach (var imageColor in imageColors) {
+				double minDeltaE = double.MaxValue;
+				var bestColor = Color.FromArgb(0, 0, 0);
+				var imageColorRgb = new Rgb() {
+					R = imageColor.R,
+					G = imageColor.G,
+					B = imageColor.B
+				};
+				
+				foreach (var allowedColor in _allowedColors) {
+					var allowedColorRgb = new Rgb() {
+						R = allowedColor.R,
+						G = allowedColor.G,
+						B = allowedColor.B
+					};
+					
+					double deltaE = Compare(imageColorRgb, allowedColorRgb);
+
+					if (deltaE < minDeltaE) {
+						minDeltaE = deltaE;
+						bestColor = allowedColor;
+					}
+				}
+				mappedColors.Add(imageColor, bestColor);
+				Progress++;
+			}
+
+			TotalWork = Image.Width * Image.Height;
+			Progress = 0;
+
+			//applies the allowed colors to the image
+			for (int y = 0; y < Image.Height; y++) {
+				for (int x = 0; x < Image.Width; x++) {
+					Image.SetPixel(x, y, mappedColors[Image.GetPixel(x, y)]);
+					Progress++;
+				}
+			}
+		}
+		
+		public void AddUpdater(Dispatcher dis, ProgressBarUpdaterDelegate del) {
 			Dispatcher = dis;
 			UpdateProgressBar = del;
+			hasUpdater = true;
 		}
-		*/
 	}
 
 	public enum ComparisonAlgorithms {
