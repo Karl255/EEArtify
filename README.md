@@ -1,3 +1,6 @@
+# ARCHIVED
+Due to the soon shutdown of EE and launch of EEU, this repository will the archived. The features of EEArtify will be directly implemented into EEUditor (EEditor but for EEU) which is going to be developed by [capasha](https://github.com/capasha).
+
 # EEArtify
 A tool that makes images drawn with EEditor look better.
 
